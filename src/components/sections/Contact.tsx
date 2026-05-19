@@ -62,14 +62,13 @@ export default function Contact() {
     ])
 
     try {
-      const res = await fetch('https://formsubmit.co/ajax/aniketsupermails2005@gmail.com', {
+      const res = await fetch('/api/contact', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
           message: formData.message,
-          _subject: `Portfolio Contact from ${formData.name}`,
         }),
       })
 
