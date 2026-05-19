@@ -79,16 +79,26 @@ export default function Contact() {
         ])
         setSubmitted(true)
       } else {
-        throw new Error('Failed')
+        // Server route failed — use mailto as fallback
+        const subject = encodeURIComponent(`Portfolio Contact from ${formData.name}`)
+        const body = encodeURIComponent(`From: ${formData.name} (${formData.email})\n\n${formData.message}`)
+        window.location.href = `mailto:${personalInfo.email}?subject=${subject}&body=${body}`
+        setTerminalOutput((prev) => [
+          ...prev,
+          { type: 'success', text: '✓ Opening your email client to send the message...' },
+        ])
+        setSubmitted(true)
       }
     } catch {
+      // Network error — use mailto
+      const subject = encodeURIComponent(`Portfolio Contact from ${formData.name}`)
+      const body = encodeURIComponent(`From: ${formData.name} (${formData.email})\n\n${formData.message}`)
+      window.location.href = `mailto:${personalInfo.email}?subject=${subject}&body=${body}`
       setTerminalOutput((prev) => [
         ...prev,
-        { type: 'info', text: '✗ Transmission failed. Opening fallback channel...' },
+        { type: 'success', text: '✓ Opening your email client to send the message...' },
       ])
-      const subject = encodeURIComponent(`Portfolio Contact from ${formData.name}`)
-      const body = encodeURIComponent(formData.message)
-      window.open(`mailto:${personalInfo.email}?subject=${subject}&body=${body}`)
+      setSubmitted(true)
     } finally {
       setSending(false)
     }

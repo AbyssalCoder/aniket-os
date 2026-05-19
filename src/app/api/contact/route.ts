@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0',
       },
       body: JSON.stringify({
         name,
@@ -29,13 +30,17 @@ export async function POST(req: NextRequest) {
     })
 
     const data = await res.json()
+    console.log('FormSubmit response:', JSON.stringify(data))
 
-    if (res.ok && data.success !== 'false') {
+    // FormSubmit returns { success: "true" } on success
+    // and { success: "false", message: "..." } when activation needed
+    if (data.success === 'true' || data.success === true) {
       return NextResponse.json({ success: true })
     }
 
-    console.error('FormSubmit error:', data)
-    return NextResponse.json({ error: 'Email delivery failed' }, { status: 502 })
+    // Activation needed or other issue
+    console.error('FormSubmit issue:', data)
+    return NextResponse.json({ error: data.message || 'Email delivery failed' }, { status: 502 })
   } catch (error) {
     console.error('Contact API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
