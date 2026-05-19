@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { personalInfo, skillCategories, projects, experiences, certifications, education } from '@/data/resume'
+import { localBowQuery } from '@/lib/localBot'
 
 /**
  * POST /api/chat
@@ -61,34 +62,42 @@ export async function POST(req: NextRequest) {
       { role: 'user', parts: [{ text: message }] },
     ]
 
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey
-    const response = await fetch(url,
-      {
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+    const payload = JSON.stringify({
+      systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
+      contents,
+      generationConfig: {
+        maxOutputTokens: 500,
+        temperature: 0.7,
+      },
+    })
+
+    let lastError = ''
+    for (const model of models) {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
-          contents,
-          generationConfig: {
-            maxOutputTokens: 500,
-            temperature: 0.7,
-          },
-        }),
-      }
-    )
+        body: payload,
+      })
 
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error('Gemini API error:', errText)
-      return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 })
+      if (response.ok) {
+        const data = await response.json()
+        const reply =
+          data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "I'm having trouble processing that. Try asking something about Aniket's projects or skills!"
+        return NextResponse.json({ reply })
+      }
+
+      lastError = await response.text()
+      console.error('Gemini API error (' + model + '):', lastError)
+      // Try next model on failure
     }
 
-    const data = await response.json()
-    const reply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "I'm having trouble processing that. Try asking something about Aniket's projects or skills!"
-
-    return NextResponse.json({ reply })
+    // All Gemini models failed — fall back to local BoW engine
+    console.log('All Gemini models unavailable, using local BoW fallback')
+    const localReply = localBowQuery(message)
+    return NextResponse.json({ reply: localReply })
   } catch (error) {
     console.error('Chat API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

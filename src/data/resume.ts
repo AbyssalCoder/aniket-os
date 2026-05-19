@@ -290,8 +290,8 @@ export const languages = [
 
 /* Quick stats for the About section */
 export const stats = [
-  { label: 'Projects Built', value: '15+' },
+  { label: 'Projects Built', value: '25+' },
   { label: 'Hackathons', value: '10+' },
   { label: 'Certifications', value: '11' },
-  { label: 'AI Agents Built', value: '10+' },
+  { label: 'AI Agents Built', value: '195+' },
 ]
