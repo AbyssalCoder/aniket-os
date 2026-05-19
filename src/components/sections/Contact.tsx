@@ -132,6 +132,7 @@ export default function Contact() {
       contact: [
         { type: 'system', text: 'Contact Info:' },
         { type: 'info', text: `  Email: ${personalInfo.email}` },
+        { type: 'info', text: `  Phone: ${personalInfo.phone}` },
         { type: 'info', text: `  Location: ${personalInfo.location}` },
       ],
       social: [
@@ -290,6 +291,13 @@ export default function Contact() {
               className="font-mono text-xs text-white/30 hover:text-cyber-cyan transition-colors"
             >
               {personalInfo.email}
+            </a>
+            <span className="text-white/10">|</span>
+            <a
+              href={`tel:${personalInfo.phone}`}
+              className="font-mono text-xs text-white/30 hover:text-cyber-cyan transition-colors"
+            >
+              {personalInfo.phone}
             </a>
             <span className="text-white/10">|</span>
             <span className="font-mono text-xs text-white/20">
