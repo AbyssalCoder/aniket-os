@@ -16,6 +16,7 @@ export const personalInfo = {
     boldProfile: 'https://bold.pro/my/aniketchowdhury10-260316213043/292r',
     linkedin: 'https://linkedin.com/in/aniket-chowdhury-7261b42b0',
     github: 'https://github.com/AbyssalCoder',
+    whatsapp: 'https://wa.me/917980458591',
   },
   profileImage: 'https://avatars.githubusercontent.com/u/218095895?v=4',
 }
@@ -92,6 +93,13 @@ export interface Project {
 }
 
 export const projects: Project[] = [
+  {
+    title: 'JARVIS AI OS',
+    description:
+      'Multi-agent local AI operating system with voice interaction, autonomous workflows, desktop automation, local LLM orchestration, and cinematic WebGL/Three.js interface. Features real-time voice commands, multi-agent task delegation, and a futuristic holographic UI.',
+    tech: ['FastAPI', 'Tauri', 'React', 'Ollama', 'Three.js', 'WebGL', 'Multi-Agent Systems'],
+    featured: true,
+  },
   {
     title: 'AI-Based Intrusion Detection System',
     description:
@@ -290,7 +298,7 @@ export const languages = [
 
 /* Quick stats for the About section */
 export const stats = [
-  { label: 'Projects Built', value: '25+' },
+  { label: 'Projects Built', value: '26+' },
   { label: 'Hackathons', value: '10+' },
   { label: 'Certifications', value: '11' },
   { label: 'AI Agents Built', value: '195+' },
