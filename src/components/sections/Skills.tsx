@@ -6,13 +6,11 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
 import { SectionLabel } from './About'
 import { skillCategories } from '@/data/resume'
-import { useWorldState } from '@/components/worlds/WorldState'
 
 gsap.registerPlugin(ScrollTrigger)
 
 export default function Skills() {
   const sectionRef = useRef<HTMLElement>(null)
-  const { enterWorld } = useWorldState()
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -77,10 +75,12 @@ export default function Skills() {
 
         <div className="flex justify-end mb-6">
           <button
-            onClick={() => enterWorld('skills')}
-            className="font-orbitron text-xs sm:text-sm tracking-[0.2em] px-6 py-2.5 rounded-lg border-2 border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/5 hover:bg-cyber-cyan/15 hover:border-cyber-cyan hover:text-cyan-300 hover:shadow-[0_0_30px_rgba(0,240,255,0.3)] transition-all duration-300 group animate-pulse"
+            onClick={() => window.dispatchEvent(new CustomEvent('enterWorld', { detail: 'skills' }))}
+            className="w-full py-4 px-6 rounded-xl border-2 border-cyan-400/40 bg-gradient-to-r from-cyan-400/10 via-cyan-400/5 to-cyan-400/10 hover:from-cyan-400/20 hover:via-cyan-400/10 hover:to-cyan-400/20 hover:border-cyan-400/80 hover:shadow-[0_0_40px_rgba(0,240,255,0.2)] transition-all duration-500 group cursor-pointer flex items-center justify-center gap-3"
           >
-            <span className="inline-block group-hover:rotate-90 transition-transform duration-300">⬡</span> EXPLORE IN 3D
+            <span className="text-cyan-400 text-2xl group-hover:rotate-90 transition-transform duration-500">⬡</span>
+            <span className="font-orbitron text-sm sm:text-base tracking-[0.25em] text-cyan-400 group-hover:text-cyan-300">EXPLORE SKILLS IN 3D</span>
+            <span className="font-mono text-[10px] text-cyan-400/50 hidden sm:inline">[ WASD + MOUSE ]</span>
           </button>
         </div>
 

@@ -7,14 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { SectionLabel } from './About'
 import GlassCard from '@/components/ui/GlassCard'
 import { projects, type Project } from '@/data/resume'
-import { useWorldState } from '@/components/worlds/WorldState'
 
 gsap.registerPlugin(ScrollTrigger)
 
 export default function Projects() {
   const sectionRef = useRef<HTMLElement>(null)
   const [filter, setFilter] = useState<'all' | 'featured'>('all')
-  const { enterWorld } = useWorldState()
 
   const displayed = filter === 'featured'
     ? projects.filter((p) => p.featured)
@@ -62,13 +60,24 @@ export default function Projects() {
             onClick={() => setFilter('featured')}
             label={`FEATURED (${projects.filter((p) => p.featured).length})`}
           />
-          <button
-            onClick={() => enterWorld('projects')}
-            className="font-orbitron text-xs sm:text-sm tracking-[0.2em] px-6 py-2.5 rounded-lg border-2 border-pink-500/50 text-pink-400 bg-pink-500/5 hover:bg-pink-500/15 hover:border-pink-500 hover:text-pink-300 hover:shadow-[0_0_30px_rgba(255,0,110,0.3)] transition-all duration-300 ml-auto group animate-pulse"
-          >
-            <span className="inline-block group-hover:rotate-90 transition-transform duration-300">⬡</span> EXPLORE IN 3D
-          </button>
         </div>
+
+        {/* 3D World CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-8"
+        >
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('enterWorld', { detail: 'projects' }))}
+            className="w-full py-4 px-6 rounded-xl border-2 border-pink-500/40 bg-gradient-to-r from-pink-500/10 via-pink-500/5 to-pink-500/10 hover:from-pink-500/20 hover:via-pink-500/10 hover:to-pink-500/20 hover:border-pink-500/80 hover:shadow-[0_0_40px_rgba(255,0,110,0.2)] transition-all duration-500 group cursor-pointer flex items-center justify-center gap-3"
+          >
+            <span className="text-pink-400 text-2xl group-hover:rotate-90 transition-transform duration-500">⬡</span>
+            <span className="font-orbitron text-sm sm:text-base tracking-[0.25em] text-pink-400 group-hover:text-pink-300">EXPLORE PROJECTS IN 3D</span>
+            <span className="font-mono text-[10px] text-pink-400/50 hidden sm:inline">[ WASD + MOUSE ]</span>
+          </button>
+        </motion.div>
 
         {/* Project grid */}
         <div className="grid md:grid-cols-2 gap-6">

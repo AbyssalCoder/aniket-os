@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 
 export type WorldType = 'none' | 'projects' | 'skills'
 
@@ -55,6 +55,16 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const toggleAudio = useCallback(() => {
     setAudioEnabled(prev => !prev)
   }, [])
+
+  // Listen for custom events from sections that can't use the context directly
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const world = (e as CustomEvent).detail as 'projects' | 'skills'
+      enterWorld(world)
+    }
+    window.addEventListener('enterWorld', handler)
+    return () => window.removeEventListener('enterWorld', handler)
+  }, [enterWorld])
 
   return (
     <WorldContext.Provider
