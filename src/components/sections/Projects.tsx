@@ -64,9 +64,9 @@ export default function Projects() {
           />
           <button
             onClick={() => enterWorld('projects')}
-            className="font-mono text-[10px] tracking-wider px-4 py-1.5 rounded border border-pink-500/30 text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/60 hover:shadow-lg hover:shadow-pink-500/10 transition-all duration-300 ml-auto group"
+            className="font-orbitron text-xs sm:text-sm tracking-[0.2em] px-6 py-2.5 rounded-lg border-2 border-pink-500/50 text-pink-400 bg-pink-500/5 hover:bg-pink-500/15 hover:border-pink-500 hover:text-pink-300 hover:shadow-[0_0_30px_rgba(255,0,110,0.3)] transition-all duration-300 ml-auto group animate-pulse"
           >
-            <span className="group-hover:animate-pulse">⬡</span> EXPLORE IN 3D
+            <span className="inline-block group-hover:rotate-90 transition-transform duration-300">⬡</span> EXPLORE IN 3D
           </button>
         </div>
 

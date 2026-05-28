@@ -78,9 +78,9 @@ export default function Skills() {
         <div className="flex justify-end mb-6">
           <button
             onClick={() => enterWorld('skills')}
-            className="font-mono text-[10px] tracking-wider px-4 py-1.5 rounded border border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan/10 hover:border-cyber-cyan/60 hover:shadow-lg hover:shadow-cyber-cyan/10 transition-all duration-300 group"
+            className="font-orbitron text-xs sm:text-sm tracking-[0.2em] px-6 py-2.5 rounded-lg border-2 border-cyber-cyan/50 text-cyber-cyan bg-cyber-cyan/5 hover:bg-cyber-cyan/15 hover:border-cyber-cyan hover:text-cyan-300 hover:shadow-[0_0_30px_rgba(0,240,255,0.3)] transition-all duration-300 group animate-pulse"
           >
-            <span className="group-hover:animate-pulse">⬡</span> EXPLORE IN 3D
+            <span className="inline-block group-hover:rotate-90 transition-transform duration-300">⬡</span> EXPLORE IN 3D
           </button>
         </div>
 
