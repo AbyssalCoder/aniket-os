@@ -1,35 +1,39 @@
 'use client'
 
-import { useRef, useMemo, useState, useCallback } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { Text, Float, MeshReflectorMaterial } from '@react-three/drei'
+import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Text, Float } from '@react-three/drei'
 import {
   EffectComposer,
   Bloom,
   Vignette,
-  ChromaticAberration,
 } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import { projects } from '@/data/resume'
 import FPSControls from './FPSControls'
 import WorldHUD from './WorldHUD'
 
-/* ── Layout: place projects along corridors ── */
+/* ── Layout: stagger projects in rooms along a long corridor ── */
 const PROJECT_POSITIONS = projects.map((_, i) => {
-  const corridor = Math.floor(i / 3)
   const side = i % 2 === 0 ? -1 : 1
-  const depth = (i % 3) * 12
+  const z = -(i * 8 + 10)
   return {
-    x: side * 6,
-    z: -(corridor * 35 + depth + 10),
+    x: side * 4.5,
+    z,
     rotation: side > 0 ? -Math.PI / 2 : Math.PI / 2,
   }
 })
 
-const WORLD_BOUNDS: [number, number, number, number] = [
-  -10, 10, -((Math.ceil(projects.length / 3)) * 35 + 20), 5
-]
+const CORRIDOR_LENGTH = projects.length * 8 + 30
+const WORLD_BOUNDS: [number, number, number, number] = [-7, 7, -CORRIDOR_LENGTH, 5]
+
+/* ── Backrooms Colors ── */
+const YELLOW_WALL = '#c4b67c'
+const YELLOW_WALL_DARK = '#a89a5e'
+const CARPET = '#8b7d5e'
+const CARPET_DARK = '#6b5e42'
+const CEILING_COLOR = '#d4c89a'
+const LIGHT_COLOR = '#fffbe6'
 
 export default function ProjectsWorld() {
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 0 })
@@ -53,28 +57,28 @@ export default function ProjectsWorld() {
   return (
     <div className="fixed inset-0 z-40">
       <Canvas
-        camera={{ position: [0, 1.7, 3], fov: 70, near: 0.1, far: 200 }}
-        dpr={[1, 1.5]}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
-        shadows
+        camera={{ position: [0, 1.7, 3], fov: 70, near: 0.1, far: 100 }}
+        dpr={[1, 1.25]}
+        gl={{ antialias: false, powerPreference: 'high-performance' }}
       >
-        {/* Ambient */}
-        <color attach="background" args={['#020208']} />
-        <fog attach="fog" args={['#020208', 5, 60]} />
-        <ambientLight intensity={0.05} />
+        {/* Sickly yellow-brown haze */}
+        <color attach="background" args={['#2a2410']} />
+        <fog attach="fog" args={['#2a2410', 8, 45]} />
 
-        {/* FPS Controls */}
+        {/* Dim yellowish ambient */}
+        <ambientLight intensity={0.15} color={LIGHT_COLOR} />
+
         <FPSControls
-          speed={5}
-          sprintMultiplier={2}
+          speed={4}
+          sprintMultiplier={1.6}
           bounds={WORLD_BOUNDS}
           onPositionChange={(p) => setPlayerPos({ x: p.x, z: p.z })}
         />
 
-        {/* Backrooms Environment */}
+        {/* Authentic Backrooms Environment */}
         <BackroomsEnvironment />
 
-        {/* Project Nodes */}
+        {/* Project display stations */}
         {projects.map((project, i) => (
           <ProjectNode
             key={i}
@@ -87,30 +91,24 @@ export default function ProjectsWorld() {
           />
         ))}
 
-        {/* Floating Particles */}
+        {/* Dust motes */}
         <DustParticles />
 
-        {/* Postprocessing */}
+        {/* Postprocessing — minimal for performance */}
         <EffectComposer multisampling={0}>
           <Bloom
-            intensity={0.8}
-            luminanceThreshold={0.2}
+            intensity={0.4}
+            luminanceThreshold={0.6}
             luminanceSmoothing={0.9}
             mipmapBlur
           />
-          <Vignette eskil={false} offset={0.3} darkness={0.8} />
-          <ChromaticAberration
-            blendFunction={BlendFunction.NORMAL}
-            offset={new THREE.Vector2(0.0005, 0.0005)}
-            radialModulation={false}
-            modulationOffset={0.0}
-          />
+          <Vignette eskil={false} offset={0.2} darkness={0.6} />
         </EffectComposer>
       </Canvas>
 
       <WorldHUD
         worldName="BACKROOMS // PROJECTS"
-        accentColor="#ff006e"
+        accentColor="#c4b67c"
         discovered={foundProjects.size}
         total={projects.length}
         itemLabel="PROJECTS"
@@ -121,139 +119,222 @@ export default function ProjectsWorld() {
   )
 }
 
-/* ── Backrooms Corridor Environment ── */
+/* ═════════════════════════════════════════════════
+   BACKROOMS ENVIRONMENT
+   - Mono-yellow walls, old beige carpet
+   - Fluorescent ceiling panel lights
+   - Partition walls creating rooms
+   ═════════════════════════════════════════════════ */
 function BackroomsEnvironment() {
-  const corridorCount = Math.ceil(projects.length / 3) + 1
+  const segmentCount = Math.ceil(CORRIDOR_LENGTH / 8)
+
+  // Create wall texture with subtle vertical stripe pattern
+  const wallTexture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 128
+    const ctx = canvas.getContext('2d')!
+    // Base yellow
+    ctx.fillStyle = '#c4b67c'
+    ctx.fillRect(0, 0, 64, 128)
+    // Vertical stripes (wallpaper pattern)
+    for (let x = 0; x < 64; x += 8) {
+      ctx.fillStyle = x % 16 === 0 ? '#b8a96e' : '#ccc088'
+      ctx.fillRect(x, 0, 2, 128)
+    }
+    // Slight staining at bottom
+    const grad = ctx.createLinearGradient(0, 80, 0, 128)
+    grad.addColorStop(0, 'rgba(100,80,40,0)')
+    grad.addColorStop(1, 'rgba(100,80,40,0.3)')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 80, 64, 48)
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(4, 1)
+    return tex
+  }, [])
+
+  // Carpet texture
+  const carpetTexture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 128
+    canvas.height = 128
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = CARPET
+    ctx.fillRect(0, 0, 128, 128)
+    // Noise for carpet grain
+    for (let i = 0; i < 3000; i++) {
+      const x = Math.random() * 128
+      const y = Math.random() * 128
+      const shade = Math.random() * 30 - 15
+      ctx.fillStyle = `rgba(${139 + shade},${125 + shade},${94 + shade},0.5)`
+      ctx.fillRect(x, y, 1, 1)
+    }
+    // Stain spots
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath()
+      ctx.arc(Math.random() * 128, Math.random() * 128, 3 + Math.random() * 8, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(80,60,30,0.15)'
+      ctx.fill()
+    }
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(10, CORRIDOR_LENGTH / 4)
+    return tex
+  }, [])
+
+  // Ceiling texture — simple drop ceiling grid
+  const ceilingTexture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = CEILING_COLOR
+    ctx.fillRect(0, 0, 64, 64)
+    // Grid lines for drop ceiling tiles
+    ctx.strokeStyle = '#b0a878'
+    ctx.lineWidth = 1
+    ctx.strokeRect(1, 1, 62, 62)
+    // Slight variation
+    ctx.fillStyle = 'rgba(0,0,0,0.03)'
+    ctx.fillRect(0, 0, 32, 32)
+    ctx.fillRect(32, 32, 32, 32)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(8, CORRIDOR_LENGTH / 3)
+    return tex
+  }, [])
 
   return (
     <group>
-      {/* Floor — reflective wet surface */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -corridorCount * 15]}>
-        <planeGeometry args={[24, corridorCount * 40]} />
-        <MeshReflectorMaterial
-          blur={[300, 100]}
-          resolution={512}
-          mixBlur={0.8}
-          mixStrength={40}
-          roughness={0.5}
-          depthScale={1}
-          color="#0a0a12"
-          metalness={0.6}
-          mirror={0.5}
-        />
+      {/* ── Floor (old moist carpet) ── */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -CORRIDOR_LENGTH / 2]}>
+        <planeGeometry args={[16, CORRIDOR_LENGTH]} />
+        <meshStandardMaterial map={carpetTexture} roughness={0.95} />
       </mesh>
 
-      {/* Ceiling */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 4, -corridorCount * 15]}>
-        <planeGeometry args={[24, corridorCount * 40]} />
-        <meshStandardMaterial color="#060610" roughness={0.9} />
+      {/* ── Ceiling (drop ceiling panels) ── */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 3.2, -CORRIDOR_LENGTH / 2]}>
+        <planeGeometry args={[16, CORRIDOR_LENGTH]} />
+        <meshStandardMaterial map={ceilingTexture} roughness={0.85} />
       </mesh>
 
-      {/* Walls */}
-      {/* Left wall */}
-      <mesh position={[-12, 2, -corridorCount * 15]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[corridorCount * 40, 4]} />
-        <meshStandardMaterial color="#080818" roughness={0.8} />
+      {/* ── Main corridor walls ── */}
+      {/* Left */}
+      <mesh position={[-8, 1.6, -CORRIDOR_LENGTH / 2]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[CORRIDOR_LENGTH, 3.2]} />
+        <meshStandardMaterial map={wallTexture} roughness={0.8} />
       </mesh>
-      {/* Right wall */}
-      <mesh position={[12, 2, -corridorCount * 15]} rotation={[0, -Math.PI / 2, 0]}>
-        <planeGeometry args={[corridorCount * 40, 4]} />
-        <meshStandardMaterial color="#080818" roughness={0.8} />
+      {/* Right */}
+      <mesh position={[8, 1.6, -CORRIDOR_LENGTH / 2]} rotation={[0, -Math.PI / 2, 0]}>
+        <planeGeometry args={[CORRIDOR_LENGTH, 3.2]} />
+        <meshStandardMaterial map={wallTexture} roughness={0.8} />
+      </mesh>
+      {/* Back wall */}
+      <mesh position={[0, 1.6, 5]}>
+        <planeGeometry args={[16, 3.2]} />
+        <meshStandardMaterial map={wallTexture} roughness={0.8} />
       </mesh>
 
-      {/* Corridor segment details */}
-      {Array.from({ length: corridorCount * 3 }, (_, i) => (
-        <CorridorSegment key={i} zPosition={-i * 12} />
+      {/* ── Partition walls creating room segments ── */}
+      {Array.from({ length: segmentCount }, (_, i) => (
+        <RoomPartition key={i} z={-i * 8 - 4} wallTexture={wallTexture} side={i % 2 === 0 ? 1 : -1} />
       ))}
 
-      {/* Flickering ceiling lights */}
-      {Array.from({ length: corridorCount * 4 }, (_, i) => (
-        <FlickeringLight key={i} position={[0, 3.8, -i * 10 - 5]} />
+      {/* ── Fluorescent ceiling lights ── */}
+      {Array.from({ length: Math.floor(CORRIDOR_LENGTH / 6) }, (_, i) => (
+        <FluorescentLight key={i} position={[0, 3.15, -i * 6 - 3]} index={i} />
       ))}
-
-      {/* Neon accent strips */}
-      {Array.from({ length: corridorCount * 2 }, (_, i) => {
-        const side = i % 2 === 0 ? -11.9 : 11.9
-        return (
-          <NeonStrip
-            key={i}
-            position={[side, 0.5, -i * 15 - 10]}
-            color={i % 3 === 0 ? '#ff006e' : i % 3 === 1 ? '#8b5cf6' : '#00f0ff'}
-          />
-        )
-      })}
     </group>
   )
 }
 
-/* ── Corridor Segment with pillars ── */
-function CorridorSegment({ zPosition }: { zPosition: number }) {
+/* ── Room partition wall (creates that classic segmented room feel) ── */
+function RoomPartition({ z, wallTexture, side }: { z: number; wallTexture: THREE.Texture; side: number }) {
   return (
-    <group position={[0, 0, zPosition]}>
-      {/* Left pillar */}
-      <mesh position={[-11, 2, 0]}>
-        <boxGeometry args={[0.3, 4, 0.3]} />
-        <meshStandardMaterial color="#0c0c1a" roughness={0.7} />
+    <group position={[0, 0, z]}>
+      {/* Partition wall from one side, not reaching the other — creates openings */}
+      <mesh position={[side * 4, 1.6, 0]}>
+        <boxGeometry args={[8, 3.2, 0.15]} />
+        <meshStandardMaterial map={wallTexture} roughness={0.8} />
       </mesh>
-      {/* Right pillar */}
-      <mesh position={[11, 2, 0]}>
-        <boxGeometry args={[0.3, 4, 0.3]} />
-        <meshStandardMaterial color="#0c0c1a" roughness={0.7} />
-      </mesh>
-      {/* Floor groove */}
-      <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[24, 0.05]} />
-        <meshStandardMaterial color="#1a1a2e" emissive="#1a1a2e" emissiveIntensity={0.3} />
+      {/* Short perpendicular wall creating an alcove */}
+      <mesh position={[side * 0.07, 1.6, side * 2]} rotation={[0, Math.PI / 2, 0]}>
+        <boxGeometry args={[4, 3.2, 0.15]} />
+        <meshStandardMaterial map={wallTexture} roughness={0.8} />
       </mesh>
     </group>
   )
 }
 
-/* ── Flickering Light ── */
-function FlickeringLight({ position }: { position: [number, number, number] }) {
+/* ── Fluorescent ceiling light panel (the iconic buzzing light) ── */
+function FluorescentLight({ position, index }: { position: [number, number, number]; index: number }) {
   const lightRef = useRef<THREE.PointLight>(null)
   const meshRef = useRef<THREE.Mesh>(null)
-  const flickerSpeed = useMemo(() => 2 + Math.random() * 5, [])
-  const flickerPhase = useMemo(() => Math.random() * Math.PI * 2, [])
+  const flickerData = useMemo(() => ({
+    speed: 3 + Math.random() * 4,
+    phase: Math.random() * Math.PI * 2,
+    broken: Math.random() < 0.12, // 12% chance to be broken/off
+    dim: Math.random() < 0.2, // 20% chance to be dim/dying
+  }), [])
 
   useFrame(({ clock }) => {
-    const t = clock.getElapsedTime() * flickerSpeed + flickerPhase
-    const flicker = 0.3 + Math.abs(Math.sin(t) * Math.sin(t * 2.7 + 1)) * 0.7
-    const glitch = Math.random() > 0.98 ? 0.1 : 1
-    const intensity = flicker * glitch * 1.5
-
-    if (lightRef.current) lightRef.current.intensity = intensity
+    if (flickerData.broken) return
+    const t = clock.getElapsedTime() * flickerData.speed + flickerData.phase
+    let intensity: number
+    if (flickerData.dim) {
+      // Dying light — heavy flicker
+      intensity = 0.2 + Math.abs(Math.sin(t * 3)) * 0.3
+      if (Math.random() > 0.95) intensity = 0.05 // random dropout
+    } else {
+      // Normal light with subtle flicker
+      intensity = 0.8 + Math.sin(t) * 0.1
+      if (Math.random() > 0.995) intensity = 0.3 // rare glitch
+    }
+    if (lightRef.current) lightRef.current.intensity = intensity * 2
     if (meshRef.current) {
       const mat = meshRef.current.material as THREE.MeshStandardMaterial
-      mat.emissiveIntensity = intensity * 2
+      mat.emissiveIntensity = intensity * 1.5
     }
   })
 
+  if (flickerData.broken) {
+    // Dead light — just the fixture, no glow
+    return (
+      <mesh position={position}>
+        <boxGeometry args={[1.2, 0.04, 0.3]} />
+        <meshStandardMaterial color="#888" roughness={0.9} />
+      </mesh>
+    )
+  }
+
   return (
     <group position={position}>
-      <pointLight ref={lightRef} color="#e8dcc8" intensity={1.5} distance={15} decay={2} />
+      <pointLight
+        ref={lightRef}
+        color={LIGHT_COLOR}
+        intensity={flickerData.dim ? 0.5 : 1.5}
+        distance={10}
+        decay={2}
+      />
+      {/* Light fixture panel */}
       <mesh ref={meshRef}>
-        <boxGeometry args={[2, 0.05, 0.3]} />
-        <meshStandardMaterial color="#333" emissive="#e8dcc8" emissiveIntensity={1} />
+        <boxGeometry args={[1.2, 0.04, 0.3]} />
+        <meshStandardMaterial
+          color="#eee"
+          emissive={LIGHT_COLOR}
+          emissiveIntensity={1.5}
+          toneMapped={false}
+        />
       </mesh>
     </group>
   )
 }
 
-/* ── Neon accent strip ── */
-function NeonStrip({ position, color }: { position: [number, number, number]; color: string }) {
-  return (
-    <group position={position}>
-      <mesh>
-        <boxGeometry args={[0.05, 0.05, 8]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={3} toneMapped={false} />
-      </mesh>
-      <pointLight color={color} intensity={0.5} distance={5} decay={2} />
-    </group>
-  )
-}
-
-/* ── Project Node / Holographic Station ── */
+/* ═════════════════════════════════════════════════
+   PROJECT NODE — Display with video playback
+   ═════════════════════════════════════════════════ */
 function ProjectNode({
   project,
   index,
@@ -270,29 +351,17 @@ function ProjectNode({
   playerPos: { x: number; z: number }
 }) {
   const groupRef = useRef<THREE.Group>(null)
-  const glowRef = useRef<THREE.Mesh>(null)
   const colors = ['#00f0ff', '#8b5cf6', '#ff006e', '#0066ff', '#00ff88']
   const color = colors[index % colors.length]
+  const [isNear, setIsNear] = useState(false)
 
-  useFrame(({ clock }) => {
-    if (!groupRef.current) return
-
-    // Check distance to player
+  useFrame(() => {
     const dx = playerPos.x - position.x
     const dz = playerPos.z - position.z
     const dist = Math.sqrt(dx * dx + dz * dz)
-
-    if (dist < 4 && !found) {
-      onDiscover()
-    }
-
-    // Pulse glow when nearby
-    if (glowRef.current) {
-      const mat = glowRef.current.material as THREE.MeshStandardMaterial
-      const pulse = 0.5 + Math.sin(clock.getElapsedTime() * 2) * 0.3
-      mat.emissiveIntensity = found ? 2 : dist < 8 ? pulse * 3 : pulse
-      mat.opacity = found ? 0.4 : dist < 8 ? 0.6 : 0.2
-    }
+    const near = dist < 6
+    setIsNear(near)
+    if (dist < 4 && !found) onDiscover()
   })
 
   return (
@@ -301,175 +370,204 @@ function ProjectNode({
       position={[position.x, 0, position.z]}
       rotation={[0, position.rotation, 0]}
     >
-      {/* Ground marker glow */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.5, 32]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.5}
-          transparent
-          opacity={0.1}
-          toneMapped={false}
-        />
-      </mesh>
+      {/* Holographic display — stands out against yellow walls */}
+      <group position={[0, 1.8, 0]}>
+        {/* Dark panel background */}
+        <mesh>
+          <planeGeometry args={[2.8, 1.8]} />
+          <meshStandardMaterial
+            color="#0a0a15"
+            emissive={color}
+            emissiveIntensity={found ? 0.08 : 0.02}
+            transparent
+            opacity={isNear ? 0.85 : 0.5}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
 
-      {/* Glowing pillar */}
-      <mesh ref={glowRef} position={[0, 1.5, 0]}>
-        <cylinderGeometry args={[0.03, 0.03, 3, 8]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={2}
-          transparent
-          opacity={0.3}
-          toneMapped={false}
-        />
-      </mesh>
-
-      {/* Light source */}
-      <pointLight
-        position={[0, 2, 0]}
-        color={color}
-        intensity={found ? 3 : 1}
-        distance={8}
-        decay={2}
-      />
-
-      {/* Holographic display panel */}
-      <Float speed={1.5} rotationIntensity={0} floatIntensity={0.3}>
-        <group position={[0, 2.2, 0]}>
-          {/* Panel background */}
-          <mesh>
-            <planeGeometry args={[3, 2]} />
-            <meshStandardMaterial
-              color="#000"
-              emissive={color}
-              emissiveIntensity={0.05}
-              transparent
-              opacity={found ? 0.6 : 0.15}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-
-          {/* Border */}
-          <mesh position={[0, 0, -0.01]}>
-            <planeGeometry args={[3.1, 2.1]} />
-            <meshStandardMaterial
-              color={color}
-              emissive={color}
-              emissiveIntensity={1}
-              transparent
-              opacity={0.15}
-              side={THREE.DoubleSide}
-              toneMapped={false}
-            />
-          </mesh>
-
-          {/* Title */}
-          <Text
-            position={[0, 0.6, 0.01]}
-            fontSize={0.15}
-            color={color}
-            anchorX="center"
-            anchorY="middle"
-            font="/fonts/orbitron.woff"
-            maxWidth={2.6}
-          >
-            {project.title.toUpperCase()}
-          </Text>
-
-          {/* Description */}
-          <Text
-            position={[0, 0.1, 0.01]}
-            fontSize={0.07}
-            color="#ffffff80"
-            anchorX="center"
-            anchorY="top"
-            maxWidth={2.6}
-            lineHeight={1.4}
-          >
-            {project.description.slice(0, 120) + (project.description.length > 120 ? '...' : '')}
-          </Text>
-
-          {/* Tech stack */}
-          <Text
-            position={[0, -0.55, 0.01]}
-            fontSize={0.06}
-            color={`${color}aa`}
-            anchorX="center"
-            anchorY="middle"
-            maxWidth={2.6}
-          >
-            {project.tech.join(' · ')}
-          </Text>
-
-          {/* Status indicator */}
-          <Text
-            position={[1.2, 0.85, 0.01]}
-            fontSize={0.05}
-            color={found ? '#00ff88' : '#ffffff40'}
-            anchorX="right"
-            anchorY="middle"
-          >
-            {found ? '◆ FOUND' : '◇ UNDISCOVERED'}
-          </Text>
-
-          {/* Index number */}
-          <Text
-            position={[-1.3, 0.85, 0.01]}
-            fontSize={0.06}
-            color={`${color}60`}
-            anchorX="left"
-            anchorY="middle"
-          >
-            {`#${String(index + 1).padStart(2, '0')}`}
-          </Text>
-        </group>
-      </Float>
-
-      {/* Floating diamond marker above */}
-      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-        <mesh position={[0, 3.5, 0]} rotation={[0, Math.PI / 4, Math.PI / 4]}>
-          <octahedronGeometry args={[0.15]} />
+        {/* Border glow */}
+        <mesh position={[0, 0, -0.005]}>
+          <planeGeometry args={[2.9, 1.9]} />
           <meshStandardMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={found ? 5 : 2}
+            emissiveIntensity={isNear ? 1.5 : 0.5}
+            transparent
+            opacity={0.15}
+            side={THREE.DoubleSide}
             toneMapped={false}
           />
         </mesh>
-      </Float>
+
+        {/* Video screen area (top half) */}
+        {project.video && (
+          <VideoScreen
+            videoSrc={project.video}
+            position={[0, 0.25, 0.01]}
+            size={[2.4, 0.9]}
+            isNear={isNear}
+          />
+        )}
+
+        {/* Title */}
+        <Text
+          position={[0, project.video ? -0.4 : 0.5, 0.01]}
+          fontSize={0.12}
+          color={color}
+          anchorX="center"
+          anchorY="middle"
+          font="/fonts/orbitron.woff"
+          maxWidth={2.4}
+        >
+          {project.title.toUpperCase()}
+        </Text>
+
+        {/* Description (shortened) */}
+        <Text
+          position={[0, project.video ? -0.6 : 0, 0.01]}
+          fontSize={0.055}
+          color="#ffffff70"
+          anchorX="center"
+          anchorY="top"
+          maxWidth={2.4}
+          lineHeight={1.3}
+        >
+          {project.description.slice(0, 100) + (project.description.length > 100 ? '...' : '')}
+        </Text>
+
+        {/* Tech stack */}
+        <Text
+          position={[0, -0.8, 0.01]}
+          fontSize={0.045}
+          color={`${color}99`}
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={2.4}
+        >
+          {project.tech.slice(0, 5).join(' · ')}
+        </Text>
+
+        {/* Status */}
+        <Text
+          position={[1.2, 0.82, 0.01]}
+          fontSize={0.04}
+          color={found ? '#00ff88' : '#ffffff30'}
+          anchorX="right"
+          anchorY="middle"
+        >
+          {found ? '◆ FOUND' : '◇ ---'}
+        </Text>
+
+        {/* Index */}
+        <Text
+          position={[-1.2, 0.82, 0.01]}
+          fontSize={0.05}
+          color={`${color}50`}
+          anchorX="left"
+          anchorY="middle"
+        >
+          {`#${String(index + 1).padStart(2, '0')}`}
+        </Text>
+      </group>
+
+      {/* Small accent light on floor beneath display */}
+      <pointLight
+        position={[0, 0.5, 0]}
+        color={color}
+        intensity={isNear ? 1.5 : 0.3}
+        distance={5}
+        decay={2}
+      />
     </group>
   )
 }
 
-/* ── Floating dust particles ── */
+/* ── Video screen using HTML video → CanvasTexture ── */
+function VideoScreen({
+  videoSrc,
+  position,
+  size,
+  isNear,
+}: {
+  videoSrc: string
+  position: [number, number, number]
+  size: [number, number]
+  isNear: boolean
+}) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const textureRef = useRef<THREE.VideoTexture | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    const video = document.createElement('video')
+    video.src = videoSrc
+    video.crossOrigin = 'anonymous'
+    video.loop = true
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'metadata'
+    videoRef.current = video
+
+    const tex = new THREE.VideoTexture(video)
+    tex.minFilter = THREE.LinearFilter
+    tex.magFilter = THREE.LinearFilter
+    tex.colorSpace = THREE.SRGBColorSpace
+    textureRef.current = tex
+
+    return () => {
+      video.pause()
+      video.src = ''
+      tex.dispose()
+    }
+  }, [videoSrc])
+
+  // Play/pause based on proximity
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (isNear) {
+      video.play().catch(() => {})
+    } else {
+      video.pause()
+    }
+  }, [isNear])
+
+  useFrame(() => {
+    if (textureRef.current && videoRef.current && !videoRef.current.paused) {
+      textureRef.current.needsUpdate = true
+    }
+  })
+
+  return (
+    <mesh ref={meshRef} position={position}>
+      <planeGeometry args={size} />
+      <meshBasicMaterial
+        map={textureRef.current}
+        toneMapped={false}
+        transparent
+        opacity={isNear ? 1 : 0.3}
+      />
+    </mesh>
+  )
+}
+
+/* ── Dust particles (lightweight) ── */
 function DustParticles() {
-  const count = 500
+  const count = 200 // reduced from 500
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 24
-      pos[i * 3 + 1] = Math.random() * 4
-      pos[i * 3 + 2] = Math.random() * -200
+      pos[i * 3] = (Math.random() - 0.5) * 16
+      pos[i * 3 + 1] = Math.random() * 3
+      pos[i * 3 + 2] = Math.random() * -CORRIDOR_LENGTH
     }
     return pos
   }, [])
 
-  const ref = useRef<THREE.Points>(null)
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return
-    const positions = ref.current.geometry.attributes.position.array as Float32Array
-    for (let i = 0; i < count; i++) {
-      positions[i * 3 + 1] += Math.sin(clock.getElapsedTime() * 0.5 + i) * 0.001
-    }
-    ref.current.geometry.attributes.position.needsUpdate = true
-  })
+  // No per-frame animation — static dust is fine and saves CPU
 
   return (
-    <points ref={ref}>
+    <points>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
@@ -478,7 +576,7 @@ function DustParticles() {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial color="#e8dcc8" size={0.03} transparent opacity={0.3} sizeAttenuation />
+      <pointsMaterial color="#d4c89a" size={0.02} transparent opacity={0.25} sizeAttenuation />
     </points>
   )
 }

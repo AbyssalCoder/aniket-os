@@ -7,9 +7,7 @@ import {
   EffectComposer,
   Bloom,
   Vignette,
-  ChromaticAberration,
 } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
 import { skillCategories } from '@/data/resume'
 import FPSControls from './FPSControls'
@@ -54,8 +52,8 @@ export default function SkillsWorld() {
     <div className="fixed inset-0 z-40">
       <Canvas
         camera={{ position: [0, 1.7, 0], fov: 70, near: 0.1, far: 200 }}
-        dpr={[1, 1.5]}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        dpr={[1, 1.25]}
+        gl={{ antialias: false, powerPreference: 'high-performance' }}
       >
         {/* Deep blue-black background */}
         <color attach="background" args={['#010114']} />
@@ -93,18 +91,12 @@ export default function SkillsWorld() {
         {/* Postprocessing */}
         <EffectComposer multisampling={0}>
           <Bloom
-            intensity={1.2}
-            luminanceThreshold={0.15}
+            intensity={0.8}
+            luminanceThreshold={0.2}
             luminanceSmoothing={0.9}
             mipmapBlur
           />
           <Vignette eskil={false} offset={0.2} darkness={0.7} />
-          <ChromaticAberration
-            blendFunction={BlendFunction.NORMAL}
-            offset={new THREE.Vector2(0.0003, 0.0003)}
-            radialModulation={false}
-            modulationOffset={0.0}
-          />
         </EffectComposer>
       </Canvas>
 
@@ -163,7 +155,7 @@ function CyberEnvironment() {
       })}
 
       {/* Floating geometry — distant cubes & octahedrons */}
-      {Array.from({ length: 20 }, (_, i) => (
+      {Array.from({ length: 10 }, (_, i) => (
         <FloatingGeometry key={i} index={i} />
       ))}
     </group>
@@ -464,7 +456,7 @@ function SkillOrb({
 
 /* ── Data Stream Particles ── */
 function DataStreams() {
-  const count = 400
+  const count = 200
   const ref = useRef<THREE.Points>(null)
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3)
@@ -501,7 +493,7 @@ function DataStreams() {
 function FloatingSymbols() {
   const symbols = useMemo(() => {
     const chars = ['{ }', '< />', '( )', '[ ]', '→', '⟨⟩', ':::', '>>>',  'λ', '∞', '≡', '⊕']
-    return Array.from({ length: 30 }, (_, i) => ({
+    return Array.from({ length: 15 }, (_, i) => ({
       char: chars[i % chars.length],
       x: (Math.random() - 0.5) * 50,
       y: 2 + Math.random() * 8,
