@@ -6,11 +6,13 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
 import { SectionLabel } from './About'
 import { skillCategories } from '@/data/resume'
+import { useWorldState } from '@/components/worlds/WorldState'
 
 gsap.registerPlugin(ScrollTrigger)
 
 export default function Skills() {
   const sectionRef = useRef<HTMLElement>(null)
+  const { enterWorld } = useWorldState()
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -72,6 +74,15 @@ export default function Skills() {
         >
           Core technologies and tools powering my AI/ML engineering workflow.
         </motion.p>
+
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => enterWorld('skills')}
+            className="font-mono text-[10px] tracking-wider px-4 py-1.5 rounded border border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan/10 hover:border-cyber-cyan/60 hover:shadow-lg hover:shadow-cyber-cyan/10 transition-all duration-300 group"
+          >
+            <span className="group-hover:animate-pulse">⬡</span> EXPLORE IN 3D
+          </button>
+        </div>
 
         {/* Skills grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">

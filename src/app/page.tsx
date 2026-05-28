@@ -14,14 +14,27 @@ import Projects from '@/components/sections/Projects'
 import Experience from '@/components/sections/Experience'
 import Contact from '@/components/sections/Contact'
 import AIChatbot from '@/components/ui/AIChatbot'
+import { WorldProvider, useWorldState } from '@/components/worlds/WorldState'
+import WorldTransition from '@/components/worlds/WorldTransition'
 
-/* Load Three.js scene only on client — no SSR */
+/* Load Three.js scenes only on client — no SSR */
 const Scene = dynamic(() => import('@/components/three/Scene'), { ssr: false })
+const ProjectsWorld = dynamic(() => import('@/components/worlds/ProjectsWorld'), { ssr: false })
+const SkillsWorld = dynamic(() => import('@/components/worlds/SkillsWorld'), { ssr: false })
 
 export default function Home() {
+  return (
+    <WorldProvider>
+      <HomeContent />
+    </WorldProvider>
+  )
+}
+
+function HomeContent() {
   const [loaded, setLoaded] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const mainRef = useRef<HTMLDivElement>(null)
+  const { activeWorld, transitioning } = useWorldState()
 
   /* Track normalised mouse position (-1 to 1) */
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -36,6 +49,8 @@ export default function Home() {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [handleMouseMove])
 
+  const showHomepage = activeWorld === 'none'
+
   return (
     <>
       {/* ── Loading cinematic ── */}
@@ -45,13 +60,23 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* ── Main site (hidden until loaded) ── */}
+      {/* ── World transition overlay ── */}
+      <WorldTransition />
+
+      {/* ── 3D Worlds ── */}
+      <AnimatePresence mode="wait">
+        {activeWorld === 'projects' && !transitioning && <ProjectsWorld key="pw" />}
+        {activeWorld === 'skills' && !transitioning && <SkillsWorld key="sw" />}
+      </AnimatePresence>
+
+      {/* ── Main site (hidden when in a world) ── */}
       <div
         ref={mainRef}
         style={{
-          opacity: loaded ? 1 : 0,
+          opacity: loaded && showHomepage ? 1 : 0,
           transition: 'opacity 0.8s ease',
-          pointerEvents: loaded ? 'auto' : 'none',
+          pointerEvents: loaded && showHomepage ? 'auto' : 'none',
+          display: showHomepage ? 'block' : 'none',
         }}
       >
         {/* Fixed 3D canvas background */}

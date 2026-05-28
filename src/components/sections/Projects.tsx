@@ -7,12 +7,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { SectionLabel } from './About'
 import GlassCard from '@/components/ui/GlassCard'
 import { projects, type Project } from '@/data/resume'
+import { useWorldState } from '@/components/worlds/WorldState'
 
 gsap.registerPlugin(ScrollTrigger)
 
 export default function Projects() {
   const sectionRef = useRef<HTMLElement>(null)
   const [filter, setFilter] = useState<'all' | 'featured'>('all')
+  const { enterWorld } = useWorldState()
 
   const displayed = filter === 'featured'
     ? projects.filter((p) => p.featured)
@@ -60,6 +62,12 @@ export default function Projects() {
             onClick={() => setFilter('featured')}
             label={`FEATURED (${projects.filter((p) => p.featured).length})`}
           />
+          <button
+            onClick={() => enterWorld('projects')}
+            className="font-mono text-[10px] tracking-wider px-4 py-1.5 rounded border border-pink-500/30 text-pink-400 hover:bg-pink-500/10 hover:border-pink-500/60 hover:shadow-lg hover:shadow-pink-500/10 transition-all duration-300 ml-auto group"
+          >
+            <span className="group-hover:animate-pulse">⬡</span> EXPLORE IN 3D
+          </button>
         </div>
 
         {/* Project grid */}
