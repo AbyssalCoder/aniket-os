@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useMemo, useState, useCallback, useEffect } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Text, Float } from '@react-three/drei'
 import {
   EffectComposer,
@@ -242,9 +242,9 @@ function BackroomsEnvironment() {
         <RoomPartition key={i} z={-i * 8 - 4} wallTexture={wallTexture} side={i % 2 === 0 ? 1 : -1} />
       ))}
 
-      {/* ── Fluorescent ceiling lights ── */}
-      {Array.from({ length: Math.floor(CORRIDOR_LENGTH / 6) }, (_, i) => (
-        <FluorescentLight key={i} position={[0, 3.15, -i * 6 - 3]} index={i} />
+      {/* ── Fluorescent ceiling lights (every 10 units to reduce pointLights) ── */}
+      {Array.from({ length: Math.floor(CORRIDOR_LENGTH / 10) }, (_, i) => (
+        <FluorescentLight key={i} position={[0, 3.15, -i * 10 - 5]} index={i} />
       ))}
     </group>
   )
@@ -279,18 +279,23 @@ function FluorescentLight({ position, index }: { position: [number, number, numb
     dim: Math.random() < 0.2, // 20% chance to be dim/dying
   }), [])
 
+  const frameSkip = useRef(0)
+
   useFrame(({ clock }) => {
     if (flickerData.broken) return
+    // Throttle flicker updates to every 5 frames
+    frameSkip.current++
+    if (frameSkip.current < 5) return
+    frameSkip.current = 0
+
     const t = clock.getElapsedTime() * flickerData.speed + flickerData.phase
     let intensity: number
     if (flickerData.dim) {
-      // Dying light — heavy flicker
       intensity = 0.2 + Math.abs(Math.sin(t * 3)) * 0.3
-      if (Math.random() > 0.95) intensity = 0.05 // random dropout
+      if (Math.random() > 0.95) intensity = 0.05
     } else {
-      // Normal light with subtle flicker
       intensity = 0.8 + Math.sin(t) * 0.1
-      if (Math.random() > 0.995) intensity = 0.3 // rare glitch
+      if (Math.random() > 0.995) intensity = 0.3
     }
     if (lightRef.current) lightRef.current.intensity = intensity * 2
     if (meshRef.current) {
@@ -354,13 +359,24 @@ function ProjectNode({
   const colors = ['#00f0ff', '#8b5cf6', '#ff006e', '#0066ff', '#00ff88']
   const color = colors[index % colors.length]
   const [isNear, setIsNear] = useState(false)
+  const wasNearRef = useRef(false)
+  const frameSkip = useRef(0)
 
   useFrame(() => {
+    // Only check distance every 10 frames to reduce work
+    frameSkip.current++
+    if (frameSkip.current < 10) return
+    frameSkip.current = 0
+
     const dx = playerPos.x - position.x
     const dz = playerPos.z - position.z
     const dist = Math.sqrt(dx * dx + dz * dz)
     const near = dist < 6
-    setIsNear(near)
+    // Only setState when value actually changes
+    if (near !== wasNearRef.current) {
+      wasNearRef.current = near
+      setIsNear(near)
+    }
     if (dist < 4 && !found) onDiscover()
   })
 
@@ -495,7 +511,7 @@ function VideoScreen({
   isNear: boolean
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
-  const textureRef = useRef<THREE.VideoTexture | null>(null)
+  const [videoTexture, setVideoTexture] = useState<THREE.VideoTexture | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
@@ -505,19 +521,20 @@ function VideoScreen({
     video.loop = true
     video.muted = true
     video.playsInline = true
-    video.preload = 'metadata'
+    video.preload = 'auto'
     videoRef.current = video
 
     const tex = new THREE.VideoTexture(video)
     tex.minFilter = THREE.LinearFilter
     tex.magFilter = THREE.LinearFilter
     tex.colorSpace = THREE.SRGBColorSpace
-    textureRef.current = tex
+    setVideoTexture(tex)
 
     return () => {
       video.pause()
       video.src = ''
       tex.dispose()
+      setVideoTexture(null)
     }
   }, [videoSrc])
 
@@ -532,21 +549,19 @@ function VideoScreen({
     }
   }, [isNear])
 
-  useFrame(() => {
-    if (textureRef.current && videoRef.current && !videoRef.current.paused) {
-      textureRef.current.needsUpdate = true
-    }
-  })
-
   return (
     <mesh ref={meshRef} position={position}>
       <planeGeometry args={size} />
-      <meshBasicMaterial
-        map={textureRef.current}
-        toneMapped={false}
-        transparent
-        opacity={isNear ? 1 : 0.3}
-      />
+      {videoTexture ? (
+        <meshBasicMaterial
+          map={videoTexture}
+          toneMapped={false}
+          transparent
+          opacity={isNear ? 1 : 0.3}
+        />
+      ) : (
+        <meshBasicMaterial color="#111" transparent opacity={0.5} />
+      )}
     </mesh>
   )
 }
