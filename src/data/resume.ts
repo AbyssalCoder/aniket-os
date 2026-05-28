@@ -17,6 +17,7 @@ export const personalInfo = {
     linkedin: 'https://linkedin.com/in/aniket-chowdhury-7261b42b0',
     github: 'https://github.com/AbyssalCoder',
     whatsapp: 'https://wa.me/917980458591',
+    website: 'https://achowdhury.tech',
   },
   profileImage: 'https://avatars.githubusercontent.com/u/218095895?v=4',
 }

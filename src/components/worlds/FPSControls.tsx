@@ -85,6 +85,13 @@ export default function FPSControls({
     }
   }, [camera, gl, sensitivity, enabled])
 
+  // Reuse vectors to avoid GC
+  const _forward = useRef(new THREE.Vector3())
+  const _right = useRef(new THREE.Vector3())
+  const _input = useRef(new THREE.Vector3())
+  const _target = useRef(new THREE.Vector3())
+  const _delta3 = useRef(new THREE.Vector3())
+
   useFrame((_, delta) => {
     if (!enabled || !isLocked.current) return
 
@@ -92,17 +99,17 @@ export default function FPSControls({
     const sprint = k['ShiftLeft'] || k['ShiftRight'] ? sprintMultiplier : 1
     const moveSpeed = speed * sprint
 
-    // Direction vectors
-    const forward = new THREE.Vector3()
+    // Direction vectors (reuse)
+    const forward = _forward.current
     camera.getWorldDirection(forward)
     forward.y = 0
     forward.normalize()
 
-    const right = new THREE.Vector3()
+    const right = _right.current
     right.crossVectors(forward, camera.up).normalize()
 
-    // Input
-    const input = new THREE.Vector3()
+    // Input (reuse)
+    const input = _input.current.set(0, 0, 0)
     if (k['KeyW'] || k['ArrowUp']) input.add(forward)
     if (k['KeyS'] || k['ArrowDown']) input.sub(forward)
     if (k['KeyD'] || k['ArrowRight']) input.add(right)
@@ -111,11 +118,12 @@ export default function FPSControls({
     if (input.length() > 0) input.normalize()
 
     // Smooth velocity with inertia
-    const target = input.multiplyScalar(moveSpeed)
+    const target = _target.current.copy(input).multiplyScalar(moveSpeed)
     velocity.current.lerp(target, 1 - Math.pow(0.001, delta))
 
     // Apply movement
-    camera.position.add(velocity.current.clone().multiplyScalar(delta))
+    _delta3.current.copy(velocity.current).multiplyScalar(delta)
+    camera.position.add(_delta3.current)
 
     // Keep camera at eye height
     camera.position.y = 1.7

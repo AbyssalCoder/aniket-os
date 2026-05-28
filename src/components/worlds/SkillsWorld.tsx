@@ -1,13 +1,8 @@
 'use client'
 
 import { useRef, useMemo, useState, useCallback } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Text, Float, Grid } from '@react-three/drei'
-import {
-  EffectComposer,
-  Bloom,
-  Vignette,
-} from '@react-three/postprocessing'
 import * as THREE from 'three'
 import { skillCategories } from '@/data/resume'
 import FPSControls from './FPSControls'
@@ -30,74 +25,69 @@ const CATEGORY_POSITIONS = skillCategories.map((_, i) => {
 })
 
 export default function SkillsWorld() {
-  const [playerPos, setPlayerPos] = useState({ x: 0, z: 0 })
+  const playerPosRef = useRef({ x: 0, z: 0 })
+  const [hudPos, setHudPos] = useState({ x: 0, z: 0 })
   const [foundSkills, setFoundSkills] = useState<Set<string>>(new Set())
+  const hudUpdateRef = useRef(0)
 
   const handleDiscover = useCallback((skill: string) => {
     setFoundSkills(prev => {
+      if (prev.has(skill)) return prev
       const next = new Set(prev)
       next.add(skill)
       return next
     })
   }, [])
 
-  const markers = CATEGORY_POSITIONS.map((p, i) => ({
+  const handlePositionChange = useCallback((pos: THREE.Vector3) => {
+    playerPosRef.current.x = pos.x
+    playerPosRef.current.z = pos.z
+    const now = Date.now()
+    if (now - hudUpdateRef.current > 200) {
+      hudUpdateRef.current = now
+      setHudPos({ x: pos.x, z: pos.z })
+    }
+  }, [])
+
+  const markers = useMemo(() => CATEGORY_POSITIONS.map((p, i) => ({
     x: p.x,
     z: p.z,
     found: skillCategories[i].items.every(s => foundSkills.has(s)),
     label: skillCategories[i].label,
-  }))
+  })), [foundSkills])
 
   return (
     <div className="fixed inset-0 z-40">
       <Canvas
-        camera={{ position: [0, 1.7, 0], fov: 70, near: 0.1, far: 200 }}
-        dpr={[1, 1.25]}
+        camera={{ position: [0, 1.7, 0], fov: 70, near: 0.1, far: 80 }}
+        dpr={[1, 1]}
         gl={{ antialias: false, powerPreference: 'high-performance' }}
       >
-        {/* Deep blue-black background */}
         <color attach="background" args={['#010114']} />
-        <fog attach="fog" args={['#010114', 15, 80]} />
+        <fog attach="fog" args={['#010114', 10, 50]} />
         <ambientLight intensity={0.08} />
 
         <FPSControls
           speed={5}
           sprintMultiplier={2}
           bounds={[-30, 30, -30, 30]}
-          onPositionChange={(p) => setPlayerPos({ x: p.x, z: p.z })}
+          onPositionChange={handlePositionChange}
         />
 
-        {/* Cyber Environment */}
         <CyberEnvironment />
 
-        {/* Skill Category Stations */}
         {skillCategories.map((cat, i) => (
           <SkillStation
             key={cat.id}
             category={cat}
             position={CATEGORY_POSITIONS[i]}
-            playerPos={playerPos}
+            playerPosRef={playerPosRef}
             foundSkills={foundSkills}
             onDiscover={handleDiscover}
           />
         ))}
 
-        {/* Data stream particles */}
         <DataStreams />
-
-        {/* Floating code fragments */}
-        <FloatingSymbols />
-
-        {/* Postprocessing */}
-        <EffectComposer multisampling={0}>
-          <Bloom
-            intensity={0.8}
-            luminanceThreshold={0.2}
-            luminanceSmoothing={0.9}
-            mipmapBlur
-          />
-          <Vignette eskil={false} offset={0.2} darkness={0.7} />
-        </EffectComposer>
       </Canvas>
 
       <WorldHUD
@@ -106,7 +96,7 @@ export default function SkillsWorld() {
         discovered={foundSkills.size}
         total={ALL_SKILLS.length}
         itemLabel="SKILLS"
-        position={playerPos}
+        position={hudPos}
         markers={markers}
       />
     </div>
@@ -154,8 +144,8 @@ function CyberEnvironment() {
         )
       })}
 
-      {/* Floating geometry — distant cubes & octahedrons */}
-      {Array.from({ length: 10 }, (_, i) => (
+      {/* Floating geometry — reduced to 5, static rotation */}
+      {Array.from({ length: 5 }, (_, i) => (
         <FloatingGeometry key={i} index={i} />
       ))}
     </group>
@@ -164,18 +154,10 @@ function CyberEnvironment() {
 
 /* ── Central Platform ── */
 function CentralPlatform() {
-  const ringRef = useRef<THREE.Mesh>(null)
-
-  useFrame(({ clock }) => {
-    if (ringRef.current) {
-      ringRef.current.rotation.y = clock.getElapsedTime() * 0.1
-    }
-  })
-
   return (
     <group>
       {/* Inner ring */}
-      <mesh ref={ringRef} position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[3, 0.03, 8, 64]} />
         <meshStandardMaterial
           color="#00f0ff"
@@ -238,25 +220,16 @@ function DataArch({ position, rotation }: { position: [number, number, number]; 
 
 /* ── Floating Geometry ── */
 function FloatingGeometry({ index }: { index: number }) {
-  const ref = useRef<THREE.Mesh>(null)
   const props = useMemo(() => ({
     x: (Math.random() - 0.5) * 60,
     y: 3 + Math.random() * 10,
     z: (Math.random() - 0.5) * 60,
     scale: 0.2 + Math.random() * 0.5,
-    speed: 0.2 + Math.random() * 0.5,
     color: ['#00f0ff', '#8b5cf6', '#ff006e', '#0066ff'][index % 4],
   }), [index])
 
-  useFrame(({ clock }) => {
-    if (!ref.current) return
-    ref.current.rotation.x = clock.getElapsedTime() * props.speed
-    ref.current.rotation.y = clock.getElapsedTime() * props.speed * 0.7
-    ref.current.position.y = props.y + Math.sin(clock.getElapsedTime() * 0.5 + index) * 0.5
-  })
-
   return (
-    <mesh ref={ref} position={[props.x, props.y, props.z]} scale={props.scale}>
+    <mesh position={[props.x, props.y, props.z]} scale={props.scale}>
       {index % 3 === 0 ? (
         <octahedronGeometry args={[1]} />
       ) : index % 3 === 1 ? (
@@ -281,30 +254,33 @@ function FloatingGeometry({ index }: { index: number }) {
 function SkillStation({
   category,
   position,
-  playerPos,
+  playerPosRef,
   foundSkills,
   onDiscover,
 }: {
   category: (typeof skillCategories)[0]
   position: { x: number; z: number; angle: number }
-  playerPos: { x: number; z: number }
+  playerPosRef: React.MutableRefObject<{ x: number; z: number }>
   foundSkills: Set<string>
   onDiscover: (skill: string) => void
 }) {
   const groupRef = useRef<THREE.Group>(null)
-  const orbRef = useRef<THREE.Mesh>(null)
+  const frameCount = useRef(0)
+  const discoveredRef = useRef(false)
 
-  useFrame(({ clock }) => {
-    if (!orbRef.current) return
-    orbRef.current.rotation.y = clock.getElapsedTime() * 0.5
-    orbRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.3) * 0.2
+  useFrame(() => {
+    frameCount.current++
+    if (frameCount.current < 15) return
+    frameCount.current = 0
 
-    // Distance check for discovery
-    const dx = playerPos.x - position.x
-    const dz = playerPos.z - position.z
+    if (discoveredRef.current) return
+    const pp = playerPosRef.current
+    const dx = pp.x - position.x
+    const dz = pp.z - position.z
     const dist = Math.sqrt(dx * dx + dz * dz)
 
     if (dist < 5) {
+      discoveredRef.current = true
       category.items.forEach(skill => {
         if (!foundSkills.has(skill)) onDiscover(skill)
       })
@@ -327,9 +303,9 @@ function SkillStation({
         />
       </mesh>
 
-      {/* Central orb */}
+      {/* Central orb — no per-frame animation */}
       <Float speed={1.5} floatIntensity={0.5}>
-        <mesh ref={orbRef} position={[0, 2.5, 0]}>
+        <mesh position={[0, 2.5, 0]}>
           <icosahedronGeometry args={[0.6, 1]} />
           <meshStandardMaterial
             color={category.color}
@@ -422,17 +398,11 @@ function SkillOrb({
   found: boolean
   index: number
 }) {
-  const ref = useRef<THREE.Group>(null)
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return
-    ref.current.position.y = position[1] + Math.sin(clock.getElapsedTime() * 0.8 + index * 0.5) * 0.2
-  })
-
+  // Static — no per-frame animation
   return (
-    <group ref={ref} position={position}>
+    <group position={position}>
       <mesh>
-        <sphereGeometry args={[0.08, 8, 8]} />
+        <sphereGeometry args={[0.08, 6, 6]} />
         <meshStandardMaterial
           color={found ? '#00ff88' : color}
           emissive={found ? '#00ff88' : color}
@@ -456,8 +426,9 @@ function SkillOrb({
 
 /* ── Data Stream Particles ── */
 function DataStreams() {
-  const count = 200
+  const count = 100
   const ref = useRef<THREE.Points>(null)
+  const frameCount = useRef(0)
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
@@ -470,11 +441,14 @@ function DataStreams() {
     return pos
   }, [])
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!ref.current) return
+    frameCount.current++
+    if (frameCount.current < 3) return
+    frameCount.current = 0
     const pos = ref.current.geometry.attributes.position.array as Float32Array
     for (let i = 0; i < count; i++) {
-      pos[i * 3 + 1] = (pos[i * 3 + 1] + 0.02) % 15
+      pos[i * 3 + 1] = (pos[i * 3 + 1] + 0.06) % 15
     }
     ref.current.geometry.attributes.position.needsUpdate = true
   })
@@ -489,47 +463,3 @@ function DataStreams() {
   )
 }
 
-/* ── Floating Code Symbols ── */
-function FloatingSymbols() {
-  const symbols = useMemo(() => {
-    const chars = ['{ }', '< />', '( )', '[ ]', '→', '⟨⟩', ':::', '>>>',  'λ', '∞', '≡', '⊕']
-    return Array.from({ length: 15 }, (_, i) => ({
-      char: chars[i % chars.length],
-      x: (Math.random() - 0.5) * 50,
-      y: 2 + Math.random() * 8,
-      z: (Math.random() - 0.5) * 50,
-      speed: 0.1 + Math.random() * 0.3,
-      color: ['#00f0ff', '#8b5cf6', '#ff006e'][i % 3],
-    }))
-  }, [])
-
-  return (
-    <group>
-      {symbols.map((s, i) => (
-        <FloatingChar key={i} {...s} index={i} />
-      ))}
-    </group>
-  )
-}
-
-function FloatingChar({
-  char, x, y, z, speed, color, index,
-}: {
-  char: string; x: number; y: number; z: number; speed: number; color: string; index: number
-}) {
-  const ref = useRef<THREE.Group>(null)
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return
-    ref.current.position.y = y + Math.sin(clock.getElapsedTime() * speed + index) * 0.5
-    ref.current.rotation.y = clock.getElapsedTime() * speed * 0.5
-  })
-
-  return (
-    <group ref={ref} position={[x, y, z]}>
-      <Text fontSize={0.2} color={color} anchorX="center" anchorY="middle" fillOpacity={0.15}>
-        {char}
-      </Text>
-    </group>
-  )
-}
