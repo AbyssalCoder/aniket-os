@@ -99,6 +99,7 @@ export const projects: Project[] = [
       'Multi-agent local AI operating system with voice interaction, autonomous workflows, desktop automation, local LLM orchestration, and cinematic WebGL/Three.js interface. Features real-time voice commands, multi-agent task delegation, and a futuristic holographic UI.',
     tech: ['FastAPI', 'Tauri', 'React', 'Ollama', 'Three.js', 'WebGL', 'Multi-Agent Systems'],
     featured: true,
+    video: '/videos/jarvis.mp4',
   },
   {
     title: 'AI-Based Intrusion Detection System',
@@ -106,6 +107,7 @@ export const projects: Project[] = [
       'Real-time IDS using Random Forest (99.97% accuracy) with Scapy for live packet capture, automated IP blocking via iptables/netsh, and a Flask dashboard. Trained on a custom 1.8M-record dataset from a VirtualBox testbed. Detects SYN/ICMP/UDP/HTTP floods, port scans, and null scans in <1 second.',
     tech: ['Python', 'Scikit-learn', 'Scapy', 'Flask', 'Random Forest', 'VirtualBox'],
     featured: true,
+    video: '/videos/intrusion_detection.mp4',
   },
   {
     title: 'CodeAbyss — AI Cloud IDE',
