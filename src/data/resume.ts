@@ -29,6 +29,16 @@ export interface Skill {
 
 export const skillCategories = [
   {
+    id: 'languages',
+    label: 'Languages',
+    icon: '💻',
+    color: '#f97316',
+    items: [
+      'Python', 'JavaScript', 'TypeScript', 'Java', 'C', 'C++',
+      'SQL', 'HTML', 'CSS', 'Bash',
+    ],
+  },
+  {
     id: 'ai',
     label: 'AI / ML',
     icon: '🧠',
@@ -46,7 +56,7 @@ export const skillCategories = [
     color: '#8b5cf6',
     items: [
       'TensorFlow', 'PyTorch', 'OpenCV', 'FastAPI', 'Flask',
-      'React', 'Next.js', 'Node.js', 'LangChain', 'Llamaindex',
+      'React', 'Next.js', 'Node.js', 'Three.js', 'LangChain', 'Llamaindex',
     ],
   },
   {
@@ -62,11 +72,12 @@ export const skillCategories = [
   },
   {
     id: 'database',
-    label: 'Databases',
+    label: 'Databases & DBMS',
     icon: '🗄️',
     color: '#0066ff',
     items: [
-      'MongoDB', 'PostgreSQL', 'MySQL', 'Neo4j', 'Chroma', 'Firebase',
+      'MongoDB', 'PostgreSQL', 'MySQL', 'SQLite', 'Supabase',
+      'Neo4j', 'Chroma', 'Firebase',
     ],
   },
   {
@@ -75,7 +86,7 @@ export const skillCategories = [
     icon: '☁️',
     color: '#00ff88',
     items: [
-      'Docker', 'Git', 'AWS Cloud', 'Network Security', 'Tailwind CSS',
+      'Docker', 'Git', 'AWS Cloud', 'Vercel', 'Network Security', 'Tailwind CSS',
     ],
   },
 ]
@@ -123,13 +134,27 @@ export const projects: Project[] = [
     },
   },
   {
+    title: 'Speci-GO — AI Species Discovery Game',
+    description:
+      'Real-world species collection game powered by AI identification. Photograph wildlife, use BioCLIP-based AI to identify species, build your collection index, explore an interactive species map, and compete on global leaderboards with explorers worldwide.',
+    tech: ['Next.js', 'Supabase', 'Groq', 'Google Gemini', 'PostgreSQL', 'Vercel', 'BioCLIP'],
+    featured: true,
+    video: '/videos/specigo.mp4',
+    links: {
+      live: 'https://speci-index.vercel.app',
+    },
+  },
+  {
     title: 'MedMate — AI Healthcare Assistant',
     description:
       'Conversational copilot with symptom triage, skin & lab analysis, smart referrals, and Gemini 1.5 Flash integration.',
     tech: ['Gemini 1.5 Flash', 'Python', 'NLP', 'Computer Vision'],
-    featured: true,    links: {
+    featured: true,
+    video: '/videos/medmate.mp4',
+    links: {
       live: 'https://abyssalcoder.github.io/MedMate/',
-    },  },
+    },
+  },
   {
     title: 'Codebase Archaeologist',
     description:
@@ -175,6 +200,7 @@ export const projects: Project[] = [
     description:
       'Glassmorphism dashboard with live system stats, weather, and AI persona interactions.',
     tech: ['React', 'CSS', 'APIs', 'Glassmorphism'],
+    video: '/videos/phoenix.mp4',
     links: {
       live: 'https://abyssalcoder.github.io/phoenix/',
     },

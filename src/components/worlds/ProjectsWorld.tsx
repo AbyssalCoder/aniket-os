@@ -5,8 +5,9 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { projects } from '@/data/resume'
-import FPSControls from './FPSControls'
+import FPSControls, { type WallBox } from './FPSControls'
 import WorldHUD from './WorldHUD'
+import MobileJoystick from './MobileJoystick'
 
 /* ── Shared player position via ref (never causes re-renders) ── */
 const PlayerPosContext = createContext<React.MutableRefObject<{ x: number; z: number }>>({ current: { x: 0, z: 0 } } as any)
@@ -29,11 +30,69 @@ const LIGHT_COLOR = '#fffbe6'
 const CARPET = '#8b7d5e'
 const CEILING_COLOR = '#d4c89a'
 
+const WALL_THICKNESS = 0.15
+const DOORWAY_WIDTH = 2.2
+
+/* ── Build wall AABB list for collision ── */
+function buildWalls(): WallBox[] {
+  const walls: WallBox[] = []
+  const half = WALL_THICKNESS / 2
+
+  // Outer walls
+  walls.push([-8 - half, -8 + half, -CORRIDOR_LENGTH, 5])  // left
+  walls.push([8 - half, 8 + half, -CORRIDOR_LENGTH, 5])     // right
+  walls.push([-8, 8, 5 - half, 5 + half])                    // back
+
+  // Partition walls with doorway gaps
+  const segmentCount = Math.ceil(CORRIDOR_LENGTH / 8)
+  for (let i = 0; i < segmentCount; i++) {
+    const z = -i * 8 - 4
+    const side = i % 2 === 0 ? 1 : -1
+
+    // Horizontal partition: extends from side*0 to side*8, centered at side*4
+    // But has a doorway gap near center (around x=0)
+    const wallCenter = side * 4
+    const wallHalfLen = 4  // total 8 units long
+    const wallMinX = wallCenter - wallHalfLen
+    const wallMaxX = wallCenter + wallHalfLen
+
+    // Create doorway gap: opening near the corridor center
+    const doorCenter = side > 0 ? wallMinX + 1 : wallMaxX - 1  // gap near x=0
+    const doorHalf = DOORWAY_WIDTH / 2
+
+    // Left part of horizontal wall (before door)
+    if (doorCenter - doorHalf > wallMinX) {
+      walls.push([wallMinX, doorCenter - doorHalf, z - half, z + half])
+    }
+    // Right part of horizontal wall (after door)
+    if (doorCenter + doorHalf < wallMaxX) {
+      walls.push([doorCenter + doorHalf, wallMaxX, z - half, z + half])
+    }
+
+    // Vertical partition wall along center
+    const vz1 = z + side * 0
+    const vz2 = z + side * 2
+    const vzMin = Math.min(vz1, vz2)
+    const vzMax = Math.max(vz1, vz2)
+    walls.push([-half + side * 0.07, half + side * 0.07, vzMin, vzMax])
+  }
+
+  return walls
+}
+
+const WALL_BOXES = buildWalls()
+
 export default function ProjectsWorld() {
   const playerPosRef = useRef({ x: 0, z: 0 })
   const [hudPos, setHudPos] = useState({ x: 0, z: 0 })
   const [foundProjects, setFoundProjects] = useState<Set<number>>(new Set())
   const hudUpdateRef = useRef(0)
+  const joystickRef = useRef({ mx: 0, mz: 0, cx: 0, cy: 0 })
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
 
   const handleDiscover = useCallback((index: number) => {
     setFoundProjects(prev => {
@@ -44,7 +103,6 @@ export default function ProjectsWorld() {
     })
   }, [])
 
-  // Throttled HUD update — only update React state every 200ms
   const handlePositionChange = useCallback((pos: THREE.Vector3) => {
     playerPosRef.current.x = pos.x
     playerPosRef.current.z = pos.z
@@ -78,6 +136,8 @@ export default function ProjectsWorld() {
           speed={4}
           sprintMultiplier={1.6}
           bounds={WORLD_BOUNDS}
+          walls={WALL_BOXES}
+          joystickRef={joystickRef}
           onPositionChange={handlePositionChange}
         />
 
@@ -106,6 +166,8 @@ export default function ProjectsWorld() {
         position={hudPos}
         markers={markers}
       />
+
+      {isMobile && <MobileJoystick joystickRef={joystickRef} />}
     </div>
   )
 }
@@ -199,17 +261,43 @@ function BackroomsEnvironment() {
         <planeGeometry args={[16, 3.2]} />
       </mesh>
 
-      {/* Partition walls — shared material, no per-wall component */}
+      {/* Partition walls with doorway openings */}
       {Array.from({ length: segmentCount }, (_, i) => {
         const z = -i * 8 - 4
         const side = i % 2 === 0 ? 1 : -1
+        // Create a gap (doorway) near the corridor center
+        const wallCenter = side * 4
+        const wallMinX = wallCenter - 4
+        const wallMaxX = wallCenter + 4
+        const doorCenter = side > 0 ? wallMinX + 1 : wallMaxX - 1
+        const doorHalf = DOORWAY_WIDTH / 2
+
+        const leftLen = Math.max(0, doorCenter - doorHalf - wallMinX)
+        const rightLen = Math.max(0, wallMaxX - (doorCenter + doorHalf))
+        const leftCenter = wallMinX + leftLen / 2
+        const rightCenter = wallMaxX - rightLen / 2
+
         return (
           <group key={i} position={[0, 0, z]}>
-            <mesh position={[side * 4, 1.6, 0]} material={wallMat}>
-              <boxGeometry args={[8, 3.2, 0.15]} />
+            {/* Left portion of horizontal wall */}
+            {leftLen > 0.3 && (
+              <mesh position={[leftCenter, 1.6, 0]} material={wallMat}>
+                <boxGeometry args={[leftLen, 3.2, WALL_THICKNESS]} />
+              </mesh>
+            )}
+            {/* Right portion of horizontal wall */}
+            {rightLen > 0.3 && (
+              <mesh position={[rightCenter, 1.6, 0]} material={wallMat}>
+                <boxGeometry args={[rightLen, 3.2, WALL_THICKNESS]} />
+              </mesh>
+            )}
+            {/* Doorway frame (top) */}
+            <mesh position={[doorCenter, 2.9, 0]} material={wallMat}>
+              <boxGeometry args={[DOORWAY_WIDTH + 0.1, 0.6, WALL_THICKNESS]} />
             </mesh>
+            {/* Vertical partition */}
             <mesh position={[side * 0.07, 1.6, side * 2]} rotation={[0, Math.PI / 2, 0]} material={wallMat}>
-              <boxGeometry args={[4, 3.2, 0.15]} />
+              <boxGeometry args={[4, 3.2, WALL_THICKNESS]} />
             </mesh>
           </group>
         )

@@ -72,14 +72,24 @@ export default function Contact() {
         }),
       })
 
+      const data = await res.json()
+
       if (res.ok) {
         setTerminalOutput((prev) => [
           ...prev,
           { type: 'success', text: '✓ TRANSMISSION SENT — Email delivered successfully.' },
         ])
         setSubmitted(true)
+      } else if (data.whatsappFallback) {
+        // Open WhatsApp as fallback
+        window.open(data.whatsappFallback, '_blank')
+        setTerminalOutput((prev) => [
+          ...prev,
+          { type: 'success', text: '✓ Redirecting to WhatsApp to deliver your message...' },
+        ])
+        setSubmitted(true)
       } else {
-        // Server route failed — use mailto as fallback
+        // Use mailto as last resort
         const subject = encodeURIComponent(`Portfolio Contact from ${formData.name}`)
         const body = encodeURIComponent(`From: ${formData.name} (${formData.email})\n\n${formData.message}`)
         window.location.href = `mailto:${personalInfo.email}?subject=${subject}&body=${body}`
