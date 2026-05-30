@@ -423,15 +423,15 @@ function ProjectNode({
         {project.video && (
           <VideoScreen
             videoSrc={project.video}
-            position={[0, 0.25, 0.01]}
-            size={[2.4, 0.9]}
+            position={[0, 0.2, 0.01]}
+            size={[2.6, 1.2]}
             isNear={isNear}
           />
         )}
 
         {/* Title */}
         <Text
-          position={[0, project.video ? -0.4 : 0.5, 0.01]}
+          position={[0, project.video ? -0.55 : 0.5, 0.01]}
           fontSize={0.12}
           color={color}
           anchorX="center"

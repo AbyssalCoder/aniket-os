@@ -108,18 +108,29 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
   const accent = colors[index % colors.length]
   const videoRef = useRef<HTMLVideoElement>(null)
 
+  // Autoplay video when card scrolls into view
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {})
+        } else {
+          video.pause()
+        }
+      },
+      { threshold: 0.3 }
+    )
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div
       className="group relative rounded-xl overflow-hidden bg-white/[0.02] backdrop-blur-xl border border-white/[0.06] hover:border-white/[0.12] transition-all duration-500"
-      onMouseEnter={() => videoRef.current?.play()}
-      onMouseLeave={() => {
-        if (videoRef.current) {
-          videoRef.current.pause()
-          videoRef.current.currentTime = 0
-        }
-      }}
     >
-      {/* Video preview on hover */}
+      {/* Video preview — autoplays when visible */}
       {project.video && (
         <div className="relative w-full aspect-video overflow-hidden bg-black/30">
           <video
@@ -129,15 +140,9 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
             loop
             playsInline
             preload="metadata"
-            className="w-full h-full object-cover opacity-40 group-hover:opacity-80 transition-opacity duration-500"
+            className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050510] via-transparent to-transparent" />
-          {/* Play indicator */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-60 group-hover:opacity-0 transition-opacity duration-300">
-            <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center">
-              <span className="text-white/40 text-xs ml-0.5">▶</span>
-            </div>
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050510] via-transparent to-transparent pointer-events-none" />
         </div>
       )}
 

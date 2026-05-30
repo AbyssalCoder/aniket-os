@@ -13,31 +13,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
     }
 
-    // Try Web3Forms first (free tier, instant, no activation needed)
-    // Access key from https://web3forms.com — this is a public submission key, not a secret
-    const web3formsKey = process.env.WEB3FORMS_KEY || 'YOUR_WEB3FORMS_KEY'
+    // Web3Forms public access key (safe for client-side per Web3Forms docs)
+    const web3formsKey = '190aba3d-fb48-4e45-8371-dc29d577b9a0'
 
     let sent = false
 
-    if (web3formsKey && web3formsKey !== 'YOUR_WEB3FORMS_KEY') {
-      try {
-        const res = await fetch('https://api.web3forms.com/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            access_key: web3formsKey,
-            name,
-            email,
-            message,
-            subject: `Portfolio Contact from ${name}`,
-            from_name: 'Aniket OS Portfolio',
-          }),
-        })
-        const data = await res.json()
-        if (data.success) sent = true
-      } catch {
-        // Web3Forms failed, try FormSubmit fallback
-      }
+    try {
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          access_key: web3formsKey,
+          name,
+          email,
+          message,
+          subject: `Portfolio Contact from ${name}`,
+          from_name: 'Aniket OS Portfolio',
+        }),
+      })
+      const data = await res.json()
+      if (data.success) sent = true
+    } catch {
+      // Web3Forms failed, try FormSubmit fallback
     }
 
     // Fallback: FormSubmit.co
