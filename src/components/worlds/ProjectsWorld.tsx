@@ -518,6 +518,7 @@ function VideoScreen({
     video.muted = true
     video.playsInline = true
     video.preload = 'auto'
+    video.autoplay = true
     videoRef.current = video
 
     const tex = new THREE.VideoTexture(video)

@@ -139,8 +139,9 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
             muted
             loop
             playsInline
-            preload="metadata"
-            className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500"
+            autoPlay
+            preload="auto"
+            className="w-full h-full object-contain bg-black opacity-70 group-hover:opacity-100 transition-opacity duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050510] via-transparent to-transparent pointer-events-none" />
         </div>
