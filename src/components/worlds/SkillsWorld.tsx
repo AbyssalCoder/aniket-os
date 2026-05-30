@@ -241,9 +241,9 @@ function HospitalEnvironment() {
     return tex
   }, [])
 
-  const wallMat = useMemo(() => new THREE.MeshLambertMaterial({ map: wallTexture }), [wallTexture])
-  const floorMat = useMemo(() => new THREE.MeshLambertMaterial({ map: floorTexture }), [floorTexture])
-  const ceilMat = useMemo(() => new THREE.MeshLambertMaterial({ map: ceilingTexture }), [ceilingTexture])
+  const wallMat = useMemo(() => new THREE.MeshLambertMaterial({ map: wallTexture, side: THREE.DoubleSide }), [wallTexture])
+  const floorMat = useMemo(() => new THREE.MeshLambertMaterial({ map: floorTexture, side: THREE.DoubleSide }), [floorTexture])
+  const ceilMat = useMemo(() => new THREE.MeshLambertMaterial({ map: ceilingTexture, side: THREE.DoubleSide }), [ceilingTexture])
 
   const lightCount = Math.floor(HALLWAY_LENGTH / 10)
   const hw = HALLWAY_WIDTH / 2
@@ -343,6 +343,22 @@ function HallwayWalls({ wallMat }: { wallMat: THREE.Material }) {
           <planeGeometry args={[doorWidth + 0.2, 0.6]} />
         </mesh>
       ))}
+      {/* Door jamb posts — visible colored markers so door is findable from inside */}
+      {CATEGORY_POSITIONS.map((pos, i) => {
+        const x = pos.side * hw
+        return (
+          <group key={`jamb-${i}`}>
+            <mesh position={[x, 1.4, pos.z + doorWidth / 2]}>
+              <boxGeometry args={[0.12, 2.8, 0.12]} />
+              <meshStandardMaterial color="#4a6b50" emissive="#2a4a30" emissiveIntensity={0.3} side={THREE.DoubleSide} />
+            </mesh>
+            <mesh position={[x, 1.4, pos.z - doorWidth / 2]}>
+              <boxGeometry args={[0.12, 2.8, 0.12]} />
+              <meshStandardMaterial color="#4a6b50" emissive="#2a4a30" emissiveIntensity={0.3} side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+        )
+      })}
     </>
   )
 }

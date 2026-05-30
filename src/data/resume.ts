@@ -127,6 +127,7 @@ export const projects: Project[] = [
       'AI-powered browser IDE with autonomous coding agent capabilities. Live code editor, terminal, AI chat, real-time preview, and multi-language execution. Integrated Gemini/OpenRouter/Ollama APIs with Next.js, Node.js, WebSockets, Monaco Editor, and TailwindCSS.',
     tech: ['Next.js', 'Node.js', 'WebSockets', 'Monaco Editor', 'Gemini API', 'TailwindCSS'],
     featured: true,
+    video: '/videos/codeabyss.mp4',
     links: {
       live: 'https://codeabyss.vercel.app',
       github: 'https://github.com/AbyssalCoder/CodeAbyss_AI_IDE',
